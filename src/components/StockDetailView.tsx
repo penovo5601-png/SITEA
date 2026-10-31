@@ -5,6 +5,7 @@ import type { StockFullAnalysis } from "@/lib/stockApi";
 import { StockChart } from "./StockChart";
 import ConfluencePanel from "./ConfluencePanel";
 import StockNews from "./StockNews";
+import DecisionPanel from "./DecisionPanel";
 import { Bookmark, Check, TrendingUp, TrendingDown, Activity } from "lucide-react";
 
 interface Props { stock: StockFullAnalysis; onAddToWatchlist?: (stock: StockFullAnalysis) => void; isWatchlisted?: boolean }
@@ -35,17 +36,21 @@ export function StockDetailView({ stock, onAddToWatchlist, isWatchlisted = false
         </div>
         <p className="mt-5 border-t border-slate-800 pt-4 text-sm leading-relaxed text-slate-300">{a.summary}</p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">{a.timeframes.map(t => <div key={t.label} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="text-[10px] uppercase tracking-wider text-slate-500">{t.label}</div><div className={`mt-2 flex justify-between gap-3 font-mono text-sm font-bold ${tint(t.score)}`}><span>{t.verdict === "SUBIR" ? "▲ SOBE" : t.verdict === "DESCER" ? "▼ DESCE" : "◆ NEUTRO"}</span><span>{t.score > 0 ? "+" : ""}{t.score.toFixed(1)}</span></div></div>)}</div>
-        <p className="mt-4 text-[11px] text-slate-500">Viés heurístico de subida: {a.probabilityUp}%. Não é uma probabilidade calibrada ou taxa de acerto. Os indicadores não garantem movimentos futuros.</p>
+        <p className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-[11px] font-semibold text-amber-200">{a.decision?.gradeLabel ?? "Sinal não validado"}. Convergência de indicadores não é uma probabilidade de acerto.</p>
       </section>
 
-      <ConfluencePanel report={a.confluence} />
       <StockNews key={stock.symbol} symbol={stock.symbol} />
+      <DecisionPanel audit={a.decision} currency={a.currency} />
+      <ConfluencePanel report={a.confluence} />
 
       {a.sourceNotes.length > 0 && <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs leading-relaxed text-amber-200/90">{a.sourceNotes.map(note => <p key={note}>{note}</p>)}</div>}
       {stock.history.length > 0 ? <StockChart history={stock.history} symbol={stock.symbol} currency={stock.currency} /> : <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-7 text-center"><p className="text-sm font-semibold text-slate-300">Sem histórico de velas nesta consulta</p><p className="mt-2 text-xs text-slate-500">A análise usa apenas os indicadores reais disponibilizados pelo scanner. Nenhum gráfico simulado foi gerado.</p></div>}
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5"><h2 className="text-sm font-bold text-slate-100">Cenário de preço e gestão de risco</h2><p className="mt-1 text-[11px] text-slate-500">Referências técnicas por ATR, não preços garantidos. Num cenário neutro, aguardar confirmação.</p><div className="mt-4 grid grid-cols-2 gap-3">{[["Referência / entrada", a.plan.entry], ["Alvo 1", a.plan.target1], ["Alvo 2", a.plan.target2], ["Stop / invalidação", a.plan.stop]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div><div className="mt-1 font-mono text-lg font-bold text-slate-100">{number(value as number)} <span className="text-xs text-slate-500">{a.currency}</span></div></div>)}</div><p className="mt-3 text-xs text-slate-400">Risco / retorno: {a.plan.riskReward == null ? "—" : `1 : ${a.plan.riskReward.toFixed(2)}`}</p></section>
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5"><h2 className="text-sm font-bold text-slate-100">Plano condicional · ainda não confirmado</h2>
+          {a.verdict === "NEUTRO" ? <p className="mt-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-xs leading-relaxed text-slate-400">Sem plano operacional enquanto os critérios do veredicto não forem cumpridos. Consulta os gatilhos futuros dos cenários acima.</p> : <>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-500">Entrada apenas após as confirmações do cenário. Não indica que a rutura ocorreu e não executa ordens.</p><div className="mt-4 grid grid-cols-2 gap-3">{[["Gatilho de entrada", a.plan.entry], ["Alvo 1", a.plan.target1], ["Alvo 2", a.plan.target2], ["Stop / invalidação", a.plan.stop]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div><div className="mt-1 font-mono text-lg font-bold text-slate-100">{number(value as number)} <span className="text-xs text-slate-500">{a.currency}</span></div></div>)}</div><p className="mt-3 text-xs text-slate-400">Risco / retorno: {a.plan.riskReward == null ? "—" : `1 : ${a.plan.riskReward.toFixed(2)}`}</p></>}
+        </section>
         <section className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5"><h2 className="text-sm font-bold text-slate-100">Riscos e sinais contrários</h2><ul className="mt-3 space-y-2 text-xs leading-relaxed text-slate-400">{a.risks.map(r => <li key={r} className="rounded-lg border border-amber-500/15 bg-amber-500/5 p-2.5">⚠ {r}</li>)}</ul></section>
       </div>
 
