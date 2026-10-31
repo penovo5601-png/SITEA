@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({ watchlist: items });
   } catch (error: any) {
     console.error("Watchlist GET error:", error);
-    return NextResponse.json({ error: "Erro ao carregar watchlist", watchlist: [] }, { status: 500 });
+    return NextResponse.json({ watchlist: [], warning: "Base de dados não configurada" });
   }
 }
 
