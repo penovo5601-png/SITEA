@@ -17,7 +17,7 @@ export async function GET(
     console.error("API stock error:", error);
     return NextResponse.json(
       { error: "Erro ao analisar ação", details: error?.message },
-      { status: 500 }
+      { status: 503 }
     );
   }
 }

@@ -57,7 +57,7 @@ export interface FundamentalData {
   profitMargin?: number;
   grahamValue?: number;
   dcfFairValue?: number;
-  valuationStatus: "Subavaliada (Grande Desconto)" | "Preço Justo" | "Sobreavaliada (Risco Elevado)";
+  valuationStatus: "Subavaliada (Grande Desconto)" | "Preço Justo" | "Sobreavaliada (Risco Elevado)" | "Dados insuficientes";
   scoreFundamental: number; // 0 - 100
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { HeaderNav } from "@/components/HeaderNav";
 import { StockDetailView } from "@/components/StockDetailView";
+import StockNews from "@/components/StockNews";
 import { ChartPhotoAnalyzer } from "@/components/ChartPhotoAnalyzer";
 import { MarketExplorer } from "@/components/MarketExplorer";
 import { WatchlistView } from "@/components/WatchlistView";
@@ -28,9 +29,12 @@ export default function HomePage() {
   >("stock");
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
 
+  const requestId = useRef(0);
+
   // Fetch initial stock data & watchlist on mount
   useEffect(() => {
-    loadStock(currentSymbol);
+    const initialSymbol = new URLSearchParams(window.location.search).get("symbol") || currentSymbol;
+    loadStock(initialSymbol);
     fetchWatchlistSymbols();
   }, []);
 
@@ -48,8 +52,10 @@ export default function HomePage() {
   };
 
   const loadStock = async (symbol: string) => {
+    const currentRequest = ++requestId.current;
     try {
       setLoading(true);
+      setStockData(null);
       setError(null);
       setCurrentSymbol(symbol.toUpperCase());
 
@@ -60,11 +66,14 @@ export default function HomePage() {
       }
 
       const data: StockFullAnalysis = await res.json();
+      if (currentRequest !== requestId.current) return;
       setStockData(data);
+      window.history.replaceState(null, "", `?symbol=${encodeURIComponent(symbol.toUpperCase())}`);
     } catch (err: any) {
+      if (currentRequest !== requestId.current) return;
       setError(err.message || "Erro ao carregar dados da ação.");
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   };
 
@@ -106,6 +115,7 @@ export default function HomePage() {
         onSearchSelect={handleSelectStock}
         currentSymbol={currentSymbol}
       />
+      {activeTab === "stock" && (loading || error) && <div className="mx-auto max-w-7xl px-4 py-4"><StockNews key={currentSymbol} symbol={currentSymbol} /></div>}
 
       {/* Main Content Area */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">

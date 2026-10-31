@@ -28,3 +28,19 @@ npm install
 npx drizzle-kit push   # se tiveres DATABASE_URL
 npm run dev
 ```
+
+
+## Confluência + notícias (v2)
+
+Motor partilhado com o TickerLab em `src/lib/research`, preservando a interface
+AçõesRadar. O veredicto SOBE/DESCE/NEUTRO cruza famílias ponderadas, mais de uma
+dezena de indicadores adicionais e cobertura real dos dados. A pontuação não
+usa preços, históricos ou fundamentais gerados artificialmente.
+
+Cada ação carrega `GET /api/news?symbol=...` automaticamente: manchetes Yahoo
+Finance e Google News com publicador, data, link, idioma e estado das fontes.
+O feed falhar não impede a análise técnica. Sem notícias não mostramos notícias
+de outra ação. Percentuais são heurísticos, não probabilidades calibradas.
+
+`GET /api/health` e `GET /api/stocks/BCP.LS` incluem a versão implantada.
+Pode abrir uma empresa diretamente em `/?symbol=BCP.LS`.

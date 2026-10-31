@@ -1,145 +1,60 @@
-import { PricePoint, TechnicalAnalysisResult, FundamentalData, calculateTechnicalAnalysis, evaluateStockExpectation, StockExpectationVerdict } from "./indicators";
-import { GLOBAL_STOCKS_DIRECTORY, StockDirectoryItem } from "@/data/globalStocks";
+import { type PricePoint, type TechnicalAnalysisResult, type FundamentalData, type StockExpectationVerdict, calculateTechnicalAnalysis } from "./indicators";
+import { GLOBAL_STOCKS_DIRECTORY, type StockDirectoryItem } from "@/data/globalStocks";
+import { getMarketData } from "./research/market-data";
+import { analyzeMarket, RESEARCH_VERSION } from "./research/analyze-market";
+import type { StockAnalysis } from "./research/engine";
 
 export interface StockFullAnalysis {
-  symbol: string;
-  name: string;
-  exchange: string;
-  currency: string;
-  market: string;
-  country: string;
-  sector: string;
-  industry: string;
-  description: string;
-  currentPrice: number;
-  change: number;
-  changePercent: number;
-  open: number;
-  high: number;
-  low: number;
-  volume: number;
-  high52Week: number;
-  low52Week: number;
-  history: PricePoint[];
-  technical: TechnicalAnalysisResult;
-  fundamental: FundamentalData;
-  expectation: StockExpectationVerdict;
-  lastUpdated: string;
+  symbol: string; name: string; exchange: string; currency: string; market: string; country: string;
+  sector: string; industry: string; description: string; currentPrice: number; change: number; changePercent: number;
+  open: number; high: number; low: number; volume: number; high52Week: number; low52Week: number;
+  history: PricePoint[]; technical: TechnicalAnalysisResult; fundamental: FundamentalData;
+  expectation: StockExpectationVerdict; lastUpdated: string;
+  research: StockAnalysis; version: string;
 }
+const USER_AGENT = "Mozilla/5.0";
 
-const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-
+/** Apenas preços e indicadores observados. Falhas das fontes nunca geram um histórico fictício. */
 export async function fetchStockData(symbol: string): Promise<StockFullAnalysis> {
   const cleanSymbol = symbol.trim().toUpperCase();
-  const dirMatch = GLOBAL_STOCKS_DIRECTORY.find(
-    s => s.symbol.toUpperCase() === cleanSymbol || s.symbol.toUpperCase().replace(/\..*/, "") === cleanSymbol
-  );
-
-  let history: PricePoint[] = [];
-  let metaPrice = 0;
-  let metaCurrency = dirMatch?.currency || "USD";
-  let metaExchange = dirMatch?.exchange || "Global Stock Exchange";
-  let metaName = dirMatch?.name || cleanSymbol;
-  let metaHigh52 = 0;
-  let metaLow52 = 0;
-
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanSymbol)}?interval=1d&range=6mo`;
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        "Accept": "*/*"
-      },
-      next: { revalidate: 60 } // cache for 1 minute
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const chartResult = data?.chart?.result?.[0];
-      if (chartResult) {
-        const meta = chartResult.meta || {};
-        metaPrice = meta.regularMarketPrice || 0;
-        metaCurrency = meta.currency || metaCurrency;
-        metaExchange = meta.fullExchangeName || meta.exchangeName || metaExchange;
-        if (meta.shortName && !dirMatch) metaName = meta.shortName;
-        metaHigh52 = meta.fiftyTwoWeekHigh || 0;
-        metaLow52 = meta.fiftyTwoWeekLow || 0;
-
-        const timestamps: number[] = chartResult.timestamp || [];
-        const quote = chartResult.indicators?.quote?.[0] || {};
-        const opens = quote.open || [];
-        const highs = quote.high || [];
-        const lows = quote.low || [];
-        const closes = quote.close || [];
-        const volumes = quote.volume || [];
-
-        for (let i = 0; i < timestamps.length; i++) {
-          const c = closes[i];
-          if (c !== null && c !== undefined && !isNaN(c)) {
-            const dateStr = new Date(timestamps[i] * 1000).toISOString().split("T")[0];
-            const o = opens[i] ?? c;
-            const h = highs[i] ?? Math.max(o, c);
-            const l = lows[i] ?? Math.min(o, c);
-            const v = volumes[i] ?? 100000;
-            history.push({
-              date: dateStr,
-              open: Number(o.toFixed(2)),
-              high: Number(h.toFixed(2)),
-              low: Number(l.toFixed(2)),
-              close: Number(c.toFixed(2)),
-              volume: Math.round(v)
-            });
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.error("Error fetching live stock quote from Yahoo:", err);
-  }
-
-  // Fallback synthetic realistic price history if API is rate limited or offline
-  if (history.length < 15) {
-    history = generateFallbackHistory(cleanSymbol, metaPrice || 85.5);
-  }
-
+  if (!/^[A-Z0-9][A-Z0-9.\-]{0,23}$/.test(cleanSymbol)) throw new Error("Símbolo de ação inválido.");
+  const directory = GLOBAL_STOCKS_DIRECTORY.find(s => s.symbol.toUpperCase() === cleanSymbol);
+  const md = await getMarketData(cleanSymbol, "2y", "1d", directory?.currency);
+  const kind = String(md.scanner?.type ?? md.meta?.instrumentType ?? "EQUITY").toUpperCase();
+  if (!["STOCK", "EQUITY", "DR"].includes(kind)) throw new Error("Esta plataforma analisa exclusivamente ações.");
+  const analysis = analyzeMarket(md, { name: directory?.name, exchange: directory?.exchange, sector: directory?.sector, market: directory?.market });
+  if (!analysis) throw new Error(`Sem dados reais disponíveis para ${cleanSymbol}. Tenta novamente mais tarde; não apresentamos preços simulados como cotações.`);
+  const history: PricePoint[] = (md.candles ?? []).map(c => ({ date: new Date(c.t).toISOString().slice(0,10), open:c.o, high:c.h, low:c.l, close:c.c, volume:c.v }));
   const technical = calculateTechnicalAnalysis(history);
-  if (metaHigh52 > 0) technical.high52Week = metaHigh52;
-  if (metaLow52 > 0) technical.low52Week = metaLow52;
-  if (metaPrice > 0) technical.currentPrice = Number(metaPrice.toFixed(2));
-
-  // Build Fundamental Data
-  const fundamental = generateFundamentalData(cleanSymbol, technical.currentPrice, dirMatch?.sector);
-
-  // Evaluate Expectation (Sobe ou Desce)
-  const expectation = evaluateStockExpectation(technical, fundamental, cleanSymbol);
-
-  const lastPoint = history[history.length - 1];
-
-  return {
-    symbol: cleanSymbol,
-    name: dirMatch?.name || metaName || cleanSymbol,
-    exchange: dirMatch?.exchange || metaExchange,
-    currency: metaCurrency,
-    market: dirMatch?.market || detectMarketByExchange(metaExchange, cleanSymbol),
-    country: dirMatch?.country || detectCountry(cleanSymbol, metaCurrency),
-    sector: dirMatch?.sector || "Ações e Indústria",
-    industry: dirMatch?.industry || "Corporativo / Mercado de Capitais",
-    description: dirMatch?.description || `Ação cotada no mercado ${metaExchange}. Acompanhamento técnico e fundamental com modelo preditivo de expectativas.`,
-    currentPrice: technical.currentPrice,
-    change: technical.change,
-    changePercent: technical.changePercent,
-    open: lastPoint?.open || technical.currentPrice,
-    high: lastPoint?.high || technical.currentPrice,
-    low: lastPoint?.low || technical.currentPrice,
-    volume: lastPoint?.volume || 1500000,
-    high52Week: technical.high52Week,
-    low52Week: technical.low52Week,
-    history,
-    technical,
-    fundamental,
-    expectation,
-    lastUpdated: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  const ind = analysis.indicators;
+  technical.currentPrice = analysis.price; technical.change = analysis.change; technical.changePercent = analysis.changePct;
+  technical.high52Week = analysis.high52; technical.low52Week = analysis.low52;
+  technical.rsi14 = ind.rsi14 ?? 0; technical.ema20 = ind.ema21 ?? 0; technical.sma50 = ind.sma50 ?? 0; technical.sma200 = ind.sma200 ?? 0;
+  technical.macd = { line: ind.macd ?? 0, signal: ind.macdSignal ?? 0, histogram: ind.macdHist ?? 0, status: ind.macdHist == null ? "Neutro" : ind.macdHist >= 0 ? "Cruzamento Altista (Compra)" : "Cruzamento Baixista (Venda)" };
+  technical.scoreTecnico = Math.round((analysis.score + 100) / 2);
+  // Campos do contrato legado mantidos para compatibilidade. Só valores REAIS são
+  // mostrados no novo painel fundamental (analysis.fundamentals); zero não é interpretado como medição.
+  const f = analysis.fundamentals;
+  const fundamental: FundamentalData = { peRatio:f?.pe ?? undefined, priceToBook:f?.priceBook ?? undefined,
+    dividendYield:f?.dividendYield ?? undefined, marketCap:f?.marketCap ?? undefined, returnOnEquity:f?.roe ?? undefined,
+    valuationStatus:"Dados insuficientes", scoreFundamental:0 };
+  const direction = analysis.verdict === "SUBIR" ? "SOBE" : analysis.verdict === "DESCER" ? "DESCE" : "NEUTRO";
+  const expectation: StockExpectationVerdict = {
+    verdict: direction === "SOBE" ? analysis.score >= 45 ? "FORTE_SUBIDA" : "SUBIDA_MODERADA" : direction === "DESCE" ? analysis.score <= -45 ? "FORTE_QUEDA" : "QUEDA_MODERADA" : "NEUTRO",
+    verdictLabel:analysis.verdictLabel, verdictEmoji:analysis.verdictEmoji, verdictColor:direction === "SOBE" ? "emerald" : direction === "DESCE" ? "rose" : "slate",
+    direction, probability:direction === "DESCE" ? 100-analysis.probabilityUp : analysis.probabilityUp,
+    confidenceLevel:analysis.confidence >= 70 ? "Alta Convicção" : analysis.confidence >= 45 ? "Média Convicção" : "Baixa / Cautela",
+    overallScore:Math.round((analysis.score+100)/2),
+    timeHorizonShort:{period:"1 a 4 Semanas (Swing Trade)",targetPrice:analysis.plan.target1,targetPercent:Number(((analysis.plan.target1/analysis.price-1)*100).toFixed(2)),stopLossPrice:analysis.plan.stop,riskPercent:Number(Math.abs(analysis.plan.downsidePct ?? 0).toFixed(2)),riskRewardRatio:analysis.plan.riskReward == null ? "—" : `1 : ${analysis.plan.riskReward.toFixed(2)}`},
+    timeHorizonMedium:{period:"1 a 6 Meses (Posição)",targetPrice:analysis.plan.target2,targetPercent:Number((analysis.plan.upsidePct ?? 0).toFixed(2))},
+    keyBullishFactors:analysis.signals.filter(s=>s.bias>=12).slice(0,5).map(s=>s.name+": "+s.detail),
+    keyBearishRisks:analysis.risks,
+    tradingPlan:analysis.summary,
   };
+  const last = history[history.length-1];
+  return { symbol:cleanSymbol,name:analysis.name,exchange:analysis.exchange,currency:analysis.currency,market:directory?.market ?? detectMarketByExchange(analysis.exchange,cleanSymbol),country:directory?.country ?? detectCountry(cleanSymbol,analysis.currency),sector:analysis.sector,industry:f?.industry ?? "",description:directory?.description ?? "Análise técnica com dados reais e notícias da empresa.",
+    currentPrice:analysis.price,change:analysis.change,changePercent:analysis.changePct,open:last?.open ?? analysis.price,high:analysis.dayRange[1],low:analysis.dayRange[0],volume:last?.volume ?? 0,
+    high52Week:analysis.high52,low52Week:analysis.low52,history,technical,fundamental,expectation,lastUpdated:new Date(analysis.updatedAt).toISOString(),research:analysis,version:RESEARCH_VERSION };
 }
 
 export async function searchGlobalStocks(query: string): Promise<StockDirectoryItem[]> {
@@ -279,42 +194,4 @@ function generateFundamentalData(symbol: string, currentPrice: number, sector: s
     valuationStatus,
     scoreFundamental: fundScore
   };
-}
-
-function generateFallbackHistory(symbol: string, basePrice: number): PricePoint[] {
-  const points: PricePoint[] = [];
-  const days = 90;
-  const now = new Date();
-  
-  // Seed variation
-  const hash = symbol.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const trend = (hash % 3 === 0) ? 0.0015 : (hash % 3 === 1) ? -0.001 : 0.0005;
-
-  let price = basePrice * 0.9;
-  for (let i = days; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    // skip weekends
-    if (d.getDay() === 0 || d.getDay() === 6) continue;
-
-    const noise = (Math.sin(i * 0.4 + hash) * 0.02) + ((Math.cos(i * 0.2) * 0.015));
-    const dayChange = (trend + noise) * price;
-    const open = Number(price.toFixed(2));
-    price = Math.max(1, price + dayChange);
-    const close = Number(price.toFixed(2));
-    const high = Number((Math.max(open, close) + Math.abs(noise * price * 0.8)).toFixed(2));
-    const low = Number((Math.min(open, close) - Math.abs(noise * price * 0.8)).toFixed(2));
-    const volume = Math.floor(800000 + Math.abs(Math.sin(i) * 2000000));
-
-    points.push({
-      date: d.toISOString().split("T")[0],
-      open,
-      high,
-      low,
-      close,
-      volume
-    });
-  }
-
-  return points;
 }
