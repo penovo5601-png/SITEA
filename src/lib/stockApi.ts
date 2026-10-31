@@ -1,5 +1,7 @@
 import { type PricePoint, type TechnicalAnalysisResult, type FundamentalData, type StockExpectationVerdict, calculateTechnicalAnalysis } from "./indicators";
 import { GLOBAL_STOCKS_DIRECTORY, type StockDirectoryItem } from "@/data/globalStocks";
+import { attachCompanyResearch } from "./research/company-service";
+import { fetchFinancialStatements } from "./research/providers/financials";
 import { fetchStockNews } from "./news";
 import { getMarketData } from "./research/market-data";
 import { analyzeMarket, RESEARCH_VERSION } from "./research/analyze-market";
@@ -20,14 +22,16 @@ export async function fetchStockData(symbol: string): Promise<StockFullAnalysis>
   const cleanSymbol = symbol.trim().toUpperCase();
   if (!/^[A-Z0-9][A-Z0-9.\-]{0,23}$/.test(cleanSymbol)) throw new Error("Símbolo de ação inválido.");
   const directory = GLOBAL_STOCKS_DIRECTORY.find(s => s.symbol.toUpperCase() === cleanSymbol);
-  const [md, news] = await Promise.all([
+  const [md, news, statements] = await Promise.all([
     getMarketData(cleanSymbol, "2y", "1d", directory?.currency),
     fetchStockNews({symbol:cleanSymbol,name:directory?.name,countryCode:cleanSymbol.endsWith(".LS") ? "PT" : cleanSymbol.endsWith(".SA") ? "BR" : null}).catch(() => null),
+    fetchFinancialStatements(cleanSymbol),
   ]);
   const kind = String(md.scanner?.type ?? md.meta?.instrumentType ?? "EQUITY").toUpperCase();
   if (!["STOCK", "EQUITY", "DR"].includes(kind)) throw new Error("Esta plataforma analisa exclusivamente ações.");
   const analysis = analyzeMarket(md, { name: directory?.name, exchange: directory?.exchange, sector: directory?.sector, market: directory?.market }, news);
   if (!analysis) throw new Error(`Sem dados reais disponíveis para ${cleanSymbol}. Tenta novamente mais tarde; não apresentamos preços simulados como cotações.`);
+  await attachCompanyResearch(analysis,md,statements);
   const history: PricePoint[] = (md.candles ?? []).map(c => ({ date: new Date(c.t).toISOString().slice(0,10), open:c.o, high:c.h, low:c.l, close:c.c, volume:c.v }));
   const technical = calculateTechnicalAnalysis(history);
   const ind = analysis.indicators;

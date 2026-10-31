@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { HeaderNav } from "@/components/HeaderNav";
 import { StockDetailView } from "@/components/StockDetailView";
 import StockNews from "@/components/StockNews";
+import ResilientCandleChart from "@/components/ResilientCandleChart";
 import { ChartPhotoAnalyzer } from "@/components/ChartPhotoAnalyzer";
 import { MarketExplorer } from "@/components/MarketExplorer";
 import { WatchlistView } from "@/components/WatchlistView";
@@ -115,7 +116,7 @@ export default function HomePage() {
         onSearchSelect={handleSelectStock}
         currentSymbol={currentSymbol}
       />
-      {activeTab === "stock" && (loading || error) && <div className="mx-auto max-w-7xl px-4 py-4"><StockNews key={currentSymbol} symbol={currentSymbol} /></div>}
+      {activeTab === "stock" && (loading || error) && <div className="mx-auto max-w-7xl px-4 py-4"><ResilientCandleChart symbol={currentSymbol} /><StockNews key={currentSymbol} symbol={currentSymbol} /></div>}
 
       {/* Main Content Area */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">

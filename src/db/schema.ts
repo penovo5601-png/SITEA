@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, doublePrecision, boolean } from "drizzle-orm/pg-core";
+import { jsonb, varchar, pgTable, text, serial, timestamp, doublePrecision, boolean } from "drizzle-orm/pg-core";
 
 export const watchlist = pgTable("watchlist", {
   id: serial("id").primaryKey(),
@@ -39,4 +39,11 @@ export const stockAlerts = pgTable("stock_alerts", {
   targetValue: doublePrecision("target_value").notNull(),
   isTriggered: boolean("is_triggered").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** Cache persistente de OHLC real, separada dos relatórios de análise. */
+export const marketHistoryCache = pgTable("market_history_cache", {
+  symbol: varchar("symbol", {length:32}).primaryKey(),
+  payload: jsonb("payload").notNull(),
+  updatedAt: timestamp("updated_at", {withTimezone:true}).defaultNow().notNull(),
 });

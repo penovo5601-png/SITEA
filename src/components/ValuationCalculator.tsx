@@ -37,7 +37,7 @@ export function ValuationCalculator() {
           Calculadora de Preço Justo (DCF &amp; Benjamin Graham)
         </h2>
         <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-          Calcula o valor intrínseco de qualquer ação com base nas metodologias mais consagradas de Wall Street (Benjamin Graham e Fluxo de Caixa Descontado).
+          Ferramenta hipotética: os números iniciais são exemplos, não dados da ação aberta. Substitui-os pelos relatórios reais. Calcula cenários de valor com base nas metodologias mais consagradas de Wall Street (Benjamin Graham e Fluxo de Caixa Descontado).
         </p>
 
         {/* Inputs */}

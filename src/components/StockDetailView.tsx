@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { StockFullAnalysis } from "@/lib/stockApi";
-import { StockChart } from "./StockChart";
+import ResilientCandleChart from "./ResilientCandleChart";
+import CompanyResearchPanel from "./CompanyResearchPanel";
 import ConfluencePanel from "./ConfluencePanel";
 import StockNews from "./StockNews";
 import DecisionPanel from "./DecisionPanel";
@@ -39,12 +40,14 @@ export function StockDetailView({ stock, onAddToWatchlist, isWatchlisted = false
         <p className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-[11px] font-semibold text-amber-200">{a.decision?.gradeLabel ?? "Sinal não validado"}. Convergência de indicadores não é uma probabilidade de acerto.</p>
       </section>
 
+      <ResilientCandleChart symbol={stock.symbol} analysis={a} />
+      <CompanyResearchPanel key={stock.symbol} report={a.company} price={a.price} />
       <StockNews key={stock.symbol} symbol={stock.symbol} />
       <DecisionPanel audit={a.decision} currency={a.currency} />
       <ConfluencePanel report={a.confluence} />
 
       {a.sourceNotes.length > 0 && <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-xs leading-relaxed text-amber-200/90">{a.sourceNotes.map(note => <p key={note}>{note}</p>)}</div>}
-      {stock.history.length > 0 ? <StockChart history={stock.history} symbol={stock.symbol} currency={stock.currency} /> : <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-7 text-center"><p className="text-sm font-semibold text-slate-300">Sem histórico de velas nesta consulta</p><p className="mt-2 text-xs text-slate-500">A análise usa apenas os indicadores reais disponibilizados pelo scanner. Nenhum gráfico simulado foi gerado.</p></div>}
+
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5"><h2 className="text-sm font-bold text-slate-100">Plano condicional · ainda não confirmado</h2>
@@ -55,7 +58,7 @@ export function StockDetailView({ stock, onAddToWatchlist, isWatchlisted = false
       </div>
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5"><h2 className="text-sm font-bold text-slate-100">Todos os sinais disponíveis</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{a.signals.map(s => <div key={s.id} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><div className="flex justify-between gap-3"><h3 className="text-xs font-semibold text-slate-300">{s.name}</h3><span className={`font-mono text-xs font-bold ${tint(s.bias)}`}>{s.bias > 0 ? "+" : ""}{s.bias.toFixed(0)}</span></div><div className="mt-1 font-mono text-xs text-sky-300">{s.value}</div><p className="mt-2 text-[11px] leading-relaxed text-slate-500">{s.detail}</p></div>)}</div></section>
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5"><h2 className="text-sm font-bold text-slate-100">Fundamentais observados · sem valores simulados</h2><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{[["P/E (TTM)", f?.pe], ["P/Book", f?.priceBook], ["EPS (TTM)", f?.eps], ["Dividendo (%)", f?.dividendYield], ["Beta", f?.beta], ["ROE (%)", f?.roe], ["Cap. bolsista", f?.marketCap], ["P/Sales", f?.priceSales]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div><div className="mt-1 font-mono text-sm font-bold text-slate-200">{number(value as number | null | undefined)}</div></div>)}</div><p className="mt-3 text-[11px] text-slate-500">Valores indisponíveis aparecem como «—». Não são criados preços justos, rácios ou lucros fictícios.</p></section>
+
     </div>
   );
 }
