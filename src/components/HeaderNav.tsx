@@ -11,18 +11,7 @@ interface HeaderNavProps {
   currentSymbol: string;
 }
 
-const TICKER_TAPE_ITEMS = [
-  { s: "EDP.LS", name: "EDP", price: "3.72€", change: "+1.2%", up: true },
-  { s: "GALP.LS", name: "Galp", price: "16.85€", change: "+0.8%", up: true },
-  { s: "NVDA", name: "Nvidia", price: "135.20$", change: "+3.4%", up: true },
-  { s: "BCP.LS", name: "Millennium", price: "0.41€", change: "+1.9%", up: true },
-  { s: "AAPL", name: "Apple", price: "228.40$", change: "-0.4%", up: false },
-  { s: "PETR4.SA", name: "Petrobras", price: "37.50 R$", change: "+1.5%", up: true },
-  { s: "JMT.LS", name: "J. Martins", price: "18.90€", change: "-0.3%", up: false },
-  { s: "ASML.AS", name: "ASML", price: "790.00€", change: "+2.1%", up: true },
-  { s: "VALE3.SA", name: "Vale", price: "58.20 R$", change: "-1.1%", up: false },
-  { s: "TSLA", name: "Tesla", price: "248.50$", change: "+4.2%", up: true }
-];
+const TICKER_TAPE_ITEMS=[{s:"EDP.LS",name:"EDP"},{s:"GALP.LS",name:"Galp"},{s:"BCP.LS",name:"Millennium"},{s:"AAPL",name:"Apple"},{s:"NVDA",name:"Nvidia"},{s:"PETR4.SA",name:"Petrobras"},{s:"JMT.LS",name:"Jerónimo Martins"},{s:"ASML.AS",name:"ASML"}];
 
 export function HeaderNav({ activeTab, setActiveTab, onSearchSelect, currentSymbol }: HeaderNavProps) {
   const [query, setQuery] = useState("");
@@ -94,10 +83,7 @@ export function HeaderNav({ activeTab, setActiveTab, onSearchSelect, currentSymb
               className="inline-flex items-center gap-1.5 hover:text-white transition cursor-pointer"
             >
               <span className="font-mono font-bold text-white">{item.s}</span>
-              <span>{item.price}</span>
-              <span className={`font-semibold ${item.up ? "text-emerald-400" : "text-rose-400"}`}>
-                {item.change}
-              </span>
+              <span className="text-slate-500">{item.name} · referência</span>
             </button>
           ))}
         </div>
@@ -188,6 +174,8 @@ export function HeaderNav({ activeTab, setActiveTab, onSearchSelect, currentSymb
 
         {/* Navigation Tabs */}
         <nav className="flex flex-wrap items-center gap-1.5">
+          <a href="/carteiras" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs font-bold text-emerald-300">Carteiras até 100k</a>
+          <a href="/guia" className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs font-bold text-sky-300">Guia & pares</a>
           <button
             onClick={() => setActiveTab("stock")}
             className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition ${

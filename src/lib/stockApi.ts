@@ -1,5 +1,6 @@
 import { type PricePoint, type TechnicalAnalysisResult, type FundamentalData, type StockExpectationVerdict, calculateTechnicalAnalysis } from "./indicators";
 import { GLOBAL_STOCKS_DIRECTORY, type StockDirectoryItem } from "@/data/globalStocks";
+import { attachPracticalGuide } from "./research/guide-service";
 import { attachCompanyResearch } from "./research/company-service";
 import { fetchFinancialStatements } from "./research/providers/financials";
 import { fetchStockNews } from "./news";
@@ -31,7 +32,7 @@ export async function fetchStockData(symbol: string): Promise<StockFullAnalysis>
   if (!["STOCK", "EQUITY", "DR"].includes(kind)) throw new Error("Esta plataforma analisa exclusivamente ações.");
   const analysis = analyzeMarket(md, { name: directory?.name, exchange: directory?.exchange, sector: directory?.sector, market: directory?.market }, news);
   if (!analysis) throw new Error(`Sem dados reais disponíveis para ${cleanSymbol}. Tenta novamente mais tarde; não apresentamos preços simulados como cotações.`);
-  await attachCompanyResearch(analysis,md,statements);
+  await Promise.all([attachCompanyResearch(analysis,md,statements),attachPracticalGuide(analysis,md)]);
   const history: PricePoint[] = (md.candles ?? []).map(c => ({ date: new Date(c.t).toISOString().slice(0,10), open:c.o, high:c.h, low:c.l, close:c.c, volume:c.v }));
   const technical = calculateTechnicalAnalysis(history);
   const ind = analysis.indicators;

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { StockFullAnalysis } from "@/lib/stockApi";
 import ResilientCandleChart from "./ResilientCandleChart";
 import CompanyResearchPanel from "./CompanyResearchPanel";
+import GuideResearchPanel from "./GuideResearchPanel";
 import ConfluencePanel from "./ConfluencePanel";
 import StockNews from "./StockNews";
 import DecisionPanel from "./DecisionPanel";
@@ -42,6 +43,7 @@ export function StockDetailView({ stock, onAddToWatchlist, isWatchlisted = false
 
       <ResilientCandleChart symbol={stock.symbol} analysis={a} />
       <CompanyResearchPanel key={stock.symbol} report={a.company} price={a.price} />
+      <GuideResearchPanel report={a.guide} symbol={a.symbol} stockBase="/?symbol=" />
       <StockNews key={stock.symbol} symbol={stock.symbol} />
       <DecisionPanel audit={a.decision} currency={a.currency} />
       <ConfluencePanel report={a.confluence} />
